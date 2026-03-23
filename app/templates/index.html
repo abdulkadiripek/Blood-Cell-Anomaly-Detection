@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blood Cell Anomaly Detection — AI Destekli Kan Hücresi Analizi</title>
+  <meta name="description" content="Yapay zeka destekli kan hücresi anomali tespiti. Hücre özelliklerini girerek hastalık tahmini yapın." />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>" />
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<div class="container">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header__logo">
+      <div class="header__icon">🩸</div>
+    </div>
+    <h1>Blood Cell Anomaly Detection</h1>
+    <p>Yapay Zeka Destekli Kan Hücresi Analiz Platformu</p>
+  </header>
+
+  <!-- ── Prediction Form ─────────────────────────────────────────────── -->
+  <form id="prediction-form" autocomplete="off">
+
+    <!-- Cell Morphology -->
+    <div class="card">
+      <div class="card__title"><span>🔬</span> Hücre Morfolojisi</div>
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="cell_type">Hücre Tipi</label>
+          <select id="cell_type" name="cell_type" required>
+            {% for ct in cell_types %}
+            <option value="{{ ct }}" {% if ct == 'Neutrophil' %}selected{% endif %}>
+              {{ ct.replace('_', ' ') }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="cell_diameter_um">Hücre Çapı (µm)</label>
+          <input type="number" id="cell_diameter_um" name="cell_diameter_um"
+                 step="any" min="1" max="22" value="10.18" placeholder="1.0 – 21.2" required />
+          <span class="hint">Aralık: 1.0 – 21.2 µm</span>
+        </div>
+
+        <div class="form-group">
+          <label for="nucleus_area_pct">Çekirdek Alanı (%)</label>
+          <input type="number" id="nucleus_area_pct" name="nucleus_area_pct"
+                 step="any" min="0" max="100" value="43.5" required />
+          <span class="hint">0 – 99</span>
+        </div>
+
+        <div class="form-group">
+          <label for="chromatin_density">Kromatin Yoğunluğu</label>
+          <input type="number" id="chromatin_density" name="chromatin_density"
+                 step="any" min="0" max="1" value="0.391" required />
+          <span class="hint">0.0 – 1.0</span>
+        </div>
+
+        <div class="form-group">
+          <label for="cytoplasm_ratio">Sitoplazma Oranı</label>
+          <input type="number" id="cytoplasm_ratio" name="cytoplasm_ratio"
+                 step="any" min="0.05" max="1" value="0.564" required />
+          <span class="hint">0.05 – 1.0</span>
+        </div>
+
+        <div class="form-group">
+          <label for="circularity">Dairesellik</label>
+          <input type="number" id="circularity" name="circularity"
+                 step="any" min="0.1" max="1" value="0.769" required />
+          <span class="hint">0.1 – 1.0</span>
+        </div>
+
+        <div class="form-group">
+          <label for="eccentricity">Eksantriklik</label>
+          <input type="number" id="eccentricity" name="eccentricity"
+                 step="any" min="0" max="1" value="0.365" required />
+          <span class="hint">0.0 – 0.99</span>
+        </div>
+
+        <div class="form-group">
+          <label for="granularity_score">Granülarite Skoru</label>
+          <input type="number" id="granularity_score" name="granularity_score"
+                 step="any" min="0" max="6" value="1.88" required />
+          <span class="hint">0.0 – 6.0</span>
+        </div>
+
+        <div class="form-group">
+          <label for="lobularity_score">Lobülarite Skoru</label>
+          <input type="number" id="lobularity_score" name="lobularity_score"
+                 step="any" min="1" max="8" value="1.77" required />
+          <span class="hint">1.0 – 7.2</span>
+        </div>
+
+        <div class="form-group">
+          <label for="membrane_smoothness">Membran Pürüzsüzlüğü</label>
+          <input type="number" id="membrane_smoothness" name="membrane_smoothness"
+                 step="any" min="0.29" max="1" value="0.843" required />
+          <span class="hint">0.29 – 1.0</span>
+        </div>
+
+        <div class="form-group">
+          <label for="cell_area_px">Hücre Alanı (px)</label>
+          <input type="number" id="cell_area_px" name="cell_area_px"
+                 step="1" min="10" max="10000" value="1500" required />
+        </div>
+
+        <div class="form-group">
+          <label for="perimeter_px">Çevre (px)</label>
+          <input type="number" id="perimeter_px" name="perimeter_px"
+                 step="1" min="5" max="500" value="150" required />
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Patient Info -->
+    <div class="card">
+      <div class="card__title"><span>🧑‍⚕️</span> Hasta Bilgileri</div>
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="patient_age_group">Yaş Grubu</label>
+          <select id="patient_age_group" name="patient_age_group" required>
+            {% for ag in age_groups %}
+            <option value="{{ ag }}" {% if ag == 'Adult' %}selected{% endif %}>
+              {% if ag == 'Pediatric' %}Pediatrik (Çocuk)
+              {% elif ag == 'Adult' %}Yetişkin
+              {% elif ag == 'Elderly' %}Yaşlı
+              {% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="patient_sex">Cinsiyet</label>
+          <select id="patient_sex" name="patient_sex" required>
+            {% for sx in sex_options %}
+            <option value="{{ sx }}" {% if sx == 'M' %}selected{% endif %}>
+              {% if sx == 'F' %}Kadın{% elif sx == 'M' %}Erkek{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Blood Parameters -->
+    <div class="card">
+      <div class="card__title"><span>🩺</span> Kan Parametreleri</div>
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="wbc_count_per_ul">WBC Sayısı (/µL)</label>
+          <input type="number" id="wbc_count_per_ul" name="wbc_count_per_ul"
+                 step="1" min="1000" max="50000" value="7500" required />
+          <span class="hint">Normal: 4,500 – 11,000</span>
+        </div>
+
+        <div class="form-group">
+          <label for="rbc_count_millions_per_ul">RBC (milyon/µL)</label>
+          <input type="number" id="rbc_count_millions_per_ul" name="rbc_count_millions_per_ul"
+                 step="0.01" min="1" max="8" value="4.70" required />
+          <span class="hint">Normal: 4.2 – 5.9</span>
+        </div>
+
+        <div class="form-group">
+          <label for="hemoglobin_g_dl">Hemoglobin (g/dL)</label>
+          <input type="number" id="hemoglobin_g_dl" name="hemoglobin_g_dl"
+                 step="0.1" min="5" max="20" value="13.5" required />
+          <span class="hint">Normal: 12.0 – 17.5</span>
+        </div>
+
+        <div class="form-group">
+          <label for="hematocrit_pct">Hematokrit (%)</label>
+          <input type="number" id="hematocrit_pct" name="hematocrit_pct"
+                 step="0.1" min="20" max="60" value="41.0" required />
+          <span class="hint">Normal: 36 – 50</span>
+        </div>
+
+        <div class="form-group">
+          <label for="platelet_count_per_ul">Trombosit (/µL)</label>
+          <input type="number" id="platelet_count_per_ul" name="platelet_count_per_ul"
+                 step="1" min="20000" max="600000" value="250000" required />
+          <span class="hint">Normal: 150,000 – 400,000</span>
+        </div>
+
+        <div class="form-group">
+          <label for="mcv_fl">MCV (fL)</label>
+          <input type="number" id="mcv_fl" name="mcv_fl"
+                 step="0.1" min="60" max="120" value="89.0" required />
+          <span class="hint">Normal: 80 – 100</span>
+        </div>
+
+        <div class="form-group">
+          <label for="mchc_g_dl">MCHC (g/dL)</label>
+          <input type="number" id="mchc_g_dl" name="mchc_g_dl"
+                 step="0.1" min="28" max="38" value="33.5" required />
+          <span class="hint">Normal: 31 – 36</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" id="btn-predict" class="btn-predict">
+      <div class="spinner"></div>
+      <span class="btn-text">🧬 Analiz Et</span>
+    </button>
+
+  </form>
+
+  <!-- ── Result Panel ──────────────────────────────────────────────── -->
+  <div id="result-panel">
+    <div class="card result-card">
+      <div id="result-badge" class="result-badge success">✅ Normal</div>
+      <div id="result-label" class="result-label">—</div>
+      <div id="result-label-tr" class="result-label-tr">—</div>
+      <div id="result-confidence" class="result-confidence">—</div>
+      <div class="result-confidence-label">Güven Skoru</div>
+      <div id="prob-grid" class="prob-grid"></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    Blood Cell Anomaly Detection v1.0 — Powered by PyTorch & FastAPI
+  </footer>
+
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
